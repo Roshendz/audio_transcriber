@@ -1,10 +1,13 @@
 import os
 import sys
+import time
 
 import speech_recognition as sr
 from PyQt5.QtCore import Qt
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QTextEdit, \
-    QProgressDialog, QStyle, QMessageBox
+    QProgressDialog, QStyle, QMessageBox, QSlider, QLabel
+from PyQt5.QtCore import QUrl
 from pydub import AudioSegment
 
 AudioSegment.converter = "C:\\FFmpeg\\bin\\ffmpeg.exe"
@@ -39,8 +42,35 @@ class MyApp(QWidget):
         hbox.addWidget(self.save_btn)
         hbox.addWidget(self.info_btn)
 
+        # Create a QMediaPlayer object
+        self.player = QMediaPlayer()
+
+        # Create a QSlider
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider.setRange(0, 0)
+        self.slider.sliderMoved.connect(self.set_position)
+
+        # Create a label for the song duration
+        self.label_duration = QLabel()
+        self.label_duration.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        # Create play and pause buttons
+        self.play_btn = QPushButton('Play')
+        self.play_btn.clicked.connect(self.play_audio)
+        self.pause_btn = QPushButton('Pause')
+        self.pause_btn.clicked.connect(self.pause_audio)
+
+        # Add the controls to a horizontal layout
+        controls = QHBoxLayout()
+        controls.addWidget(self.play_btn)
+        controls.addWidget(self.pause_btn)
+        controls.addWidget(self.slider)
+        controls.addWidget(self.label_duration)
+
         vbox = QVBoxLayout()
         vbox.addWidget(self.text_edit)
+        # Add the controls layout to the main vertical layout
+        vbox.addLayout(controls)
         vbox.addLayout(hbox)
 
         self.setLayout(vbox)
@@ -71,6 +101,13 @@ class MyApp(QWidget):
                 progress.close()
 
                 self.text_edit.setText(text)
+
+                # Set the media content
+                self.player.setMedia(QMediaContent(QUrl.fromLocalFile(fname[0])))
+
+                # Connect the media player signals
+                self.player.positionChanged.connect(self.position_changed)
+                self.player.durationChanged.connect(self.duration_changed)
             except Exception as e:
                 print(f"An error occurred: {e}")
 
@@ -82,7 +119,7 @@ class MyApp(QWidget):
     def show_info(self):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
-        msg.setText("Audio Transcriber v1.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
+        msg.setText("Audio Transcriber v1.1.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
         msg.setWindowTitle("Info")
         msg.exec_()
 
@@ -103,6 +140,21 @@ class MyApp(QWidget):
         except IOError:
             return f"Could not find or read the audio file; {audio_file}"
 
+    def play_audio(self):
+        self.player.play()
+
+    def pause_audio(self):
+        self.player.pause()
+
+    def set_position(self, position):
+        self.player.setPosition(position)
+
+    def position_changed(self, position):
+        self.slider.setValue(position)
+
+    def duration_changed(self, duration):
+        self.slider.setRange(0, duration)
+        self.label_duration.setText(time.strftime('%H:%M:%S', time.gmtime(duration / 1000)))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
