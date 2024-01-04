@@ -6,9 +6,10 @@ import speech_recognition as sr
 from PyQt5.QtCore import Qt
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QTextEdit, \
-    QProgressDialog, QStyle, QMessageBox, QSlider, QLabel
+    QProgressDialog, QStyle, QMessageBox, QSlider, QLabel, QMessageBox
 from PyQt5.QtCore import QUrl
 from pydub import AudioSegment
+from reportlab.pdfgen import canvas
 
 AudioSegment.converter = "C:\\FFmpeg\\bin\\ffmpeg.exe"
 AudioSegment.ffmpeg = "C:\\FFmpeg\\bin\\ffmpeg.exe"
@@ -30,7 +31,7 @@ class MyApp(QWidget):
         self.btn = QPushButton(' Select Audio File')
         self.btn.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
         self.btn.clicked.connect(self.select_audio_file)
-        self.save_btn = QPushButton(' Save to Text File')
+        self.save_btn = QPushButton(' Export Transcription')
         self.save_btn.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
         self.save_btn.clicked.connect(self.save_to_text_file)
         self.info_btn = QPushButton(' Info')
@@ -111,15 +112,56 @@ class MyApp(QWidget):
             except Exception as e:
                 print(f"An error occurred: {e}")
 
+    # def save_to_text_file(self):
+    #     if self.text_edit.toPlainText():
+    #         with open(f"{self.audio_file_name}.txt", "w") as file:
+    #             file.write(self.text_edit.toPlainText())
+
     def save_to_text_file(self):
-        if self.text_edit.toPlainText():
-            with open(f"{self.audio_file_name}.txt", "w") as file:
-                file.write(self.text_edit.toPlainText())
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        fileName, _ = QFileDialog.getSaveFileName(self, "QFileDialog.getSaveFileName()", "",
+                                                  "All Files (*);;Text Files (*.txt);;PDF Files (*.pdf)",
+                                                  options=options)
+        if fileName:
+            # If the user doesn't select a file type, default to .txt
+            if _ == 'All Files (*)':
+                _ = 'Text Files (*.txt)'
+            if _.find('*.txt') != -1:
+                # Split the text into words
+                words = self.text_edit.toPlainText().split()
+                # Group the words into lines of 20 words each
+                lines = [' '.join(words[i:i + 20]) for i in range(0, len(words), 20)]
+                # Join the lines with newline characters to form the final text
+                text = '\n'.join(lines)
+                # Write the text to the file
+                with open(fileName if fileName.endswith('.txt') else fileName + '.txt', "w") as file:
+                    file.write(text)
+            elif _.find('*.pdf') != -1:
+                c = canvas.Canvas(fileName if fileName.endswith('.pdf') else fileName + '.pdf')
+                textobject = c.beginText()
+                textobject.setTextOrigin(15, 730)
+                # Split the text into words
+                words = self.text_edit.toPlainText().split()
+                # Group the words into lines of 15 words each
+                lines = [' '.join(words[i:i + 15]) for i in range(0, len(words), 15)]
+                for line in lines:
+                    # Add each line to the text object
+                    textobject.textLine(line.strip())
+                c.drawText(textobject)
+                c.save()
+
+            # Show a message box after the file is saved
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+            msg.setText("File has been saved successfully!")
+            msg.setWindowTitle("Success")
+            msg.exec_()
 
     def show_info(self):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
-        msg.setText("Audio Transcriber v1.1.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
+        msg.setText("Audio Transcriber v1.2.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
         msg.setWindowTitle("Info")
         msg.exec_()
 
