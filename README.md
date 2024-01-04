@@ -7,6 +7,7 @@ Audio Transcriber is a user-friendly desktop application that transcribes audio 
 - Transcribes audio files to text.
 - Supports audio files up to 4 minutes in length.
 - User-friendly interface with modern design.
+- **New in version 1.1.0**: Integrated media player. Users can now listen to the audio files directly within the app before transcribing them.
 
 ## How to Use
 
@@ -14,6 +15,7 @@ Audio Transcriber is a user-friendly desktop application that transcribes audio 
 2. The application will transcribe the audio file to text.
 3. The transcribed text will be displayed in the text box.
 4. Click the 'Save to Text File' button to save the transcribed text to a text file.
+5. **New in version 1.1.0**: Use the integrated media player to listen to the audio file. You can play, pause, and seek the audio file using the player controls.
 
 ## Built With
 
