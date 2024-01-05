@@ -9,6 +9,10 @@ Audio Transcriber is a user-friendly desktop application that transcribes audio 
 - User-friendly interface with modern design.
 - **New in version 1.1.0**: Integrated media player. Users can now listen to the audio files directly within the app before transcribing them.
 - **New in version 1.2.0**: Export transcriptions to text or PDF files.
+- **New in version 1.3.0**: Mute audio functionality.
+- **New in version 1.3.0**: The progress indicator shows the current playback position nad duration of the audio file.
+- **New in version 1.3.0**: Dark mode support with QDarkStyle.
+- 
 
 ## How to Use
 
@@ -17,12 +21,14 @@ Audio Transcriber is a user-friendly desktop application that transcribes audio 
 3. The transcribed text will be displayed in the text box.
 4. Click the 'Export Transcription' button to save the transcribed text to a text or PDF file.
 5. **New in version 1.1.0**: Use the integrated media player to listen to the audio file. You can play, pause, and seek the audio file using the player controls.
+6. **New in version 1.3.0**: The duration of the audio file is displayed on the interface.
 
 ## Built With
 
 - Python
 - PyQt5
 - Google Speech Recognition
+- QDarkStyle
 
 ## License
 

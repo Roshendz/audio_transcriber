@@ -6,15 +6,15 @@ import speech_recognition as sr
 from PyQt5.QtCore import Qt
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QTextEdit, \
-    QProgressDialog, QStyle, QMessageBox, QSlider, QLabel, QMessageBox
-from PyQt5.QtCore import QUrl
+    QProgressDialog, QStyle, QMessageBox, QSlider, QLabel
+from PyQt5.QtCore import QUrl, QTime
 from pydub import AudioSegment
 from reportlab.pdfgen import canvas
+import qdarkstyle
 
 AudioSegment.converter = "C:\\FFmpeg\\bin\\ffmpeg.exe"
 AudioSegment.ffmpeg = "C:\\FFmpeg\\bin\\ffmpeg.exe"
 AudioSegment.ffprobe = "C:\\FFmpeg\\bin\\ffprobe.exe"
-
 
 class MyApp(QWidget):
     def __init__(self):
@@ -24,9 +24,19 @@ class MyApp(QWidget):
         self.info_btn = None
         self.text_edit = None
         self.audio_file_name = None
+        self.player = None
+        self.slider = None
+        self.label_duration = None
+        self.play_btn = None
+        self.pause_btn = None
+        self.mute_btn = None
         self.initUI()
 
     def initUI(self):
+        # Set the window transparent
+        # self.setAttribute(Qt.WA_TranslucentBackground)
+        # self.setStyleSheet("background-color:transparent;")
+
         self.text_edit = QTextEdit()
         self.btn = QPushButton(' Select Audio File')
         self.btn.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
@@ -37,6 +47,33 @@ class MyApp(QWidget):
         self.info_btn = QPushButton(' Info')
         self.info_btn.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
         self.info_btn.clicked.connect(self.show_info)
+
+        # Style the buttons
+        button_style = """
+                    QPushButton {
+                        color: #333;
+                        border: 2px solid #555;
+                        border-radius: 11px;
+                        padding: 5px;
+                        background: qradialgradient(cx: 0.3, cy: -0.4,
+                                                    fx: 0.3, fy: -0.4,
+                                                    radius: 1.35, stop: 0 #fff, stop: 1 #888);
+                        min-width: 80px;
+                    }
+                    QPushButton:hover {
+                        background: qradialgradient(cx: 0.3, cy: -0.4,
+                                                    fx: 0.3, fy: -0.4,
+                                                    radius: 1.35, stop: 0 #fff, stop: 1 #bbb);
+                    }
+                    QPushButton:pressed {
+                        background: qradialgradient(cx: 0.4, cy: -0.1,
+                                                    fx: 0.4, fy: -0.1,
+                                                    radius: 1.35, stop: 0 #fff, stop: 1 #ddd);
+                    }
+                """
+        self.btn.setStyleSheet(button_style)
+        self.save_btn.setStyleSheet(button_style)
+        self.info_btn.setStyleSheet(button_style)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.btn)
@@ -54,6 +91,10 @@ class MyApp(QWidget):
         # Create a label for the song duration
         self.label_duration = QLabel()
         self.label_duration.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        # self.label_duration.setStyleSheet("QLabel { color : white; }")
+
+        # Create labels for the current playback position
+        self.label_position = QLabel()
 
         # Create play and pause buttons
         self.play_btn = QPushButton('Play')
@@ -61,12 +102,25 @@ class MyApp(QWidget):
         self.pause_btn = QPushButton('Pause')
         self.pause_btn.clicked.connect(self.pause_audio)
 
+        # Style the play and pause buttons
+        self.play_btn.setStyleSheet(button_style)
+        self.pause_btn.setStyleSheet(button_style)
+
+        # Create mute button
+        self.mute_btn = QPushButton()
+        self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolume))
+        self.mute_btn.setCheckable(False)
+        self.mute_btn.clicked.connect(self.mute_audio)
+
         # Add the controls to a horizontal layout
         controls = QHBoxLayout()
         controls.addWidget(self.play_btn)
         controls.addWidget(self.pause_btn)
+        controls.addWidget(self.mute_btn)
         controls.addWidget(self.slider)
+        controls.addWidget(self.label_position)
         controls.addWidget(self.label_duration)
+        # controls.addWidget(self.label_remaining)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.text_edit)
@@ -92,12 +146,12 @@ class MyApp(QWidget):
             try:
                 # Show a progress dialog while the audio file is being transcribed
                 progress = QProgressDialog("Transcribing audio file...", None, 0, 0, self)
-                progress.setCancelButton(None)
-                progress.setWindowModality(Qt.WindowModal)
+                progress.setGeometry(350, 350, 300, 30)
+                progress.setWindowTitle(' ')
                 progress.show()
                 QApplication.processEvents()
 
-                text = self.transcribe_audio(fname[0])
+                text = self.transcribe_audio(fname[0], progress)
 
                 progress.close()
 
@@ -161,11 +215,11 @@ class MyApp(QWidget):
     def show_info(self):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
-        msg.setText("Audio Transcriber v1.2.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
+        msg.setText("Audio Transcriber v1.3.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
         msg.setWindowTitle("Info")
         msg.exec_()
 
-    def transcribe_audio(self, audio_file):
+    def transcribe_audio(self, audio_file, progress):
         r = sr.Recognizer()
         try:
             # Convert mp3 file to wav
@@ -173,7 +227,13 @@ class MyApp(QWidget):
             audio.export("transcript.wav", format="wav")
             with sr.AudioFile("transcript.wav") as source:
                 audio_data = r.record(source)
+                # Update the progress value
+                progress.setValue(20)
+                QApplication.processEvents()
                 text = r.recognize_google(audio_data)
+                # Update the progress value
+                progress.setValue(100)
+                QApplication.processEvents()
                 return text
         except sr.UnknownValueError:
             return "Google Speech Recognition could not understand the audio"
@@ -192,13 +252,29 @@ class MyApp(QWidget):
         self.player.setPosition(position)
 
     def position_changed(self, position):
+        # Update the slider position
         self.slider.setValue(position)
+
+        # Update the current playback position label
+        self.label_position.setText(QTime(0, 0).addMSecs(position).toString())
 
     def duration_changed(self, duration):
         self.slider.setRange(0, duration)
         self.label_duration.setText(time.strftime('%H:%M:%S', time.gmtime(duration / 1000)))
 
+    def mute_audio(self):
+        if self.player.isMuted():
+            self.player.setMuted(False)
+            self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolume))
+        else:
+            self.player.setMuted(True)
+            self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolumeMuted))
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+
+    # Apply QDarkStyle
+    app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+
     ex = MyApp()
     sys.exit(app.exec_())
