@@ -6,15 +6,18 @@ import speech_recognition as sr
 from PyQt5.QtCore import Qt
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QTextEdit, \
-    QProgressDialog, QStyle, QMessageBox, QSlider, QLabel
+    QProgressDialog, QStyle, QMessageBox, QSlider, QLabel, QLineEdit
 from PyQt5.QtCore import QUrl, QTime
 from pydub import AudioSegment
 from reportlab.pdfgen import canvas
 import qdarkstyle
 
+from volume_dialog import VolumeDialog
+
 AudioSegment.converter = "C:\\FFmpeg\\bin\\ffmpeg.exe"
 AudioSegment.ffmpeg = "C:\\FFmpeg\\bin\\ffmpeg.exe"
 AudioSegment.ffprobe = "C:\\FFmpeg\\bin\\ffprobe.exe"
+
 
 class MyApp(QWidget):
     def __init__(self):
@@ -110,7 +113,13 @@ class MyApp(QWidget):
         self.mute_btn = QPushButton()
         self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolume))
         self.mute_btn.setCheckable(False)
-        self.mute_btn.clicked.connect(self.mute_audio)
+        # self.mute_btn.clicked.connect(self.mute_audio)
+        self.mute_btn.clicked.connect(self.show_volume_dialog)
+
+        # Create a QLineEdit for the search bar
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText('Search...')
+        self.search_bar.textChanged.connect(self.highlight_text)
 
         # Add the controls to a horizontal layout
         controls = QHBoxLayout()
@@ -123,6 +132,8 @@ class MyApp(QWidget):
         # controls.addWidget(self.label_remaining)
 
         vbox = QVBoxLayout()
+        # Add the search bar to your layout
+        vbox.addWidget(self.search_bar)
         vbox.addWidget(self.text_edit)
         # Add the controls layout to the main vertical layout
         vbox.addLayout(controls)
@@ -215,7 +226,7 @@ class MyApp(QWidget):
     def show_info(self):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
-        msg.setText("Audio Transcriber v1.3.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
+        msg.setText("Audio Transcriber v1.4.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
         msg.setWindowTitle("Info")
         msg.exec_()
 
@@ -262,13 +273,33 @@ class MyApp(QWidget):
         self.slider.setRange(0, duration)
         self.label_duration.setText(time.strftime('%H:%M:%S', time.gmtime(duration / 1000)))
 
-    def mute_audio(self):
-        if self.player.isMuted():
-            self.player.setMuted(False)
-            self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolume))
+    # def mute_audio(self):
+        #     if self.player.isMuted():
+        #   self.player.setMuted(False)
+        #   self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolume))
+        # else:
+        #    self.player.setMuted(True)
+    #    self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolumeMuted))
+
+    def show_volume_dialog(self):
+        self.volume_dialog = VolumeDialog(self.player)
+        self.volume_dialog.exec_()
+
+    def highlight_text(self):
+        # Get the search text from the search bar
+        search_text = self.search_bar.text()
+
+        # Get the transcribed text from the text edit
+        transcribed_text = self.text_edit.toPlainText()
+
+        # Check if the search text is in the transcribed text
+        if search_text in transcribed_text:
+            # Highlight the search text in the transcribed text
+            self.text_edit.setHtml(
+                transcribed_text.replace(search_text, f'<span style="background-color: #FFFF00">{search_text}</span>'))
         else:
-            self.player.setMuted(True)
-            self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolumeMuted))
+            # Show a message box if the search text is not found
+            QMessageBox.information(self, 'Search', 'No matches found for your search.')
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
