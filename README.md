@@ -14,6 +14,8 @@ Audio Transcriber is a user-friendly desktop application that transcribes audio 
 - **New in version 1.3.0**: Dark mode support with QDarkStyle.
 - **New in version 1.4.0**: Volume control dialog. Users can now adjust the playback volume and mute/unmute the audio within the app.
 - **New in version 1.4.0**: Search bar for transcribed text. Users can now quickly find and highlight specific keywords or phrases in the transcribed text.
+- **New in version 1.5.0**: Customized the transcription formatting for improved readability.
+- **New in version 1.5.0**: Added a new feature to transcribe audio from selected MP4 files.
 
 ## How to Use
 
@@ -25,6 +27,7 @@ Audio Transcriber is a user-friendly desktop application that transcribes audio 
 6. The duration of the audio file is displayed on the interface.
 7. **New in version 1.4.0**: Adjust the playback volume or mute/unmute the audio using the volume control dialog.
 8. **New in version 1.4.0**: Use the search bar to quickly find and highlight specific keywords or phrases in the transcribed text.
+9. **New in version 1.5.0.0**: Select an MP4 file to extract the audio and transcribe it to text.
 
 ## Built With
 

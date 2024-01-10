@@ -4,13 +4,16 @@ import time
 
 import speech_recognition as sr
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QTextCharFormat, QFont
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QHBoxLayout, QFileDialog, QTextEdit, \
-    QProgressDialog, QStyle, QMessageBox, QSlider, QLabel, QLineEdit
+    QProgressDialog, QStyle, QMessageBox, QSlider, QLabel, QLineEdit, QRadioButton, QButtonGroup, QToolBar, QAction, \
+    QComboBox, QFontComboBox
 from PyQt5.QtCore import QUrl, QTime
 from pydub import AudioSegment
 from reportlab.pdfgen import canvas
 import qdarkstyle
+from moviepy.editor import VideoFileClip
 
 from volume_dialog import VolumeDialog
 
@@ -22,6 +25,19 @@ AudioSegment.ffprobe = "C:\\FFmpeg\\bin\\ffprobe.exe"
 class MyApp(QWidget):
     def __init__(self):
         super().__init__()
+        self.btn_mp4 = None
+        self.font_box = None
+        self.font_size_box = None
+        self.formatting_toolbar = None
+        self.label_position = None
+        self.volume_dialog = None
+        self.underline_action = None
+        self.bold_action = None
+        self.italic_action = None
+        self.language_group = None
+        self.italian_button = None
+        self.english_button = None
+        self.search_bar = None
         self.btn = None
         self.save_btn = None
         self.info_btn = None
@@ -50,6 +66,9 @@ class MyApp(QWidget):
         self.info_btn = QPushButton(' Info')
         self.info_btn.setIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
         self.info_btn.clicked.connect(self.show_info)
+        self.btn_mp4 = QPushButton(' Select MP4 File')
+        self.btn_mp4.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
+        self.btn_mp4.clicked.connect(self.select_mp4_file)
 
         # Style the buttons
         button_style = """
@@ -77,9 +96,11 @@ class MyApp(QWidget):
         self.btn.setStyleSheet(button_style)
         self.save_btn.setStyleSheet(button_style)
         self.info_btn.setStyleSheet(button_style)
+        self.btn_mp4.setStyleSheet(button_style)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.btn)
+        hbox.addWidget(self.btn_mp4)
         hbox.addWidget(self.save_btn)
         hbox.addWidget(self.info_btn)
 
@@ -121,6 +142,54 @@ class MyApp(QWidget):
         self.search_bar.setPlaceholderText('Search...')
         self.search_bar.textChanged.connect(self.highlight_text)
 
+        # Create radio buttons for language selection
+        self.english_button = QRadioButton('English')
+        self.italian_button = QRadioButton('Italian')
+
+        # Make English the default selection
+        self.english_button.setChecked(True)
+
+        # Add the radio buttons to a button group
+        self.language_group = QButtonGroup()
+        self.language_group.addButton(self.english_button)
+        self.language_group.addButton(self.italian_button)
+
+        # Create a horizontal layout for the search bar and radio buttons
+        search_and_language_layout = QHBoxLayout()
+        search_and_language_layout.addWidget(self.search_bar)
+        search_and_language_layout.addWidget(self.english_button)
+        search_and_language_layout.addWidget(self.italian_button)
+
+        # Create a toolbar for formatting actions
+        self.formatting_toolbar = QToolBar()
+
+        # Create actions for bold, italic, and underline
+        self.bold_action = QAction('Bold', self)
+        self.bold_action.setCheckable(True)
+        self.bold_action.triggered.connect(self.set_bold)
+        self.formatting_toolbar.addAction(self.bold_action)
+
+        self.italic_action = QAction('Italic', self)
+        self.italic_action.setCheckable(True)
+        self.italic_action.triggered.connect(self.set_italic)
+        self.formatting_toolbar.addAction(self.italic_action)
+
+        self.underline_action = QAction('Underline', self)
+        self.underline_action.setCheckable(True)
+        self.underline_action.triggered.connect(self.set_underline)
+        self.formatting_toolbar.addAction(self.underline_action)
+
+        # Create a font size combo box
+        self.font_size_box = QComboBox()
+        self.font_size_box.addItems([str(i) for i in range(6, 50)])
+        self.font_size_box.currentTextChanged.connect(self.set_font_size)
+        self.formatting_toolbar.addWidget(self.font_size_box)
+
+        # Create a font combo box
+        self.font_box = QFontComboBox()
+        self.font_box.currentFontChanged.connect(self.set_font)
+        self.formatting_toolbar.addWidget(self.font_box)
+
         # Add the controls to a horizontal layout
         controls = QHBoxLayout()
         controls.addWidget(self.play_btn)
@@ -133,8 +202,10 @@ class MyApp(QWidget):
 
         vbox = QVBoxLayout()
         # Add the search bar to your layout
-        vbox.addWidget(self.search_bar)
+        vbox.addLayout(search_and_language_layout)
         vbox.addWidget(self.text_edit)
+        # Add the toolbar to your layout
+        vbox.addWidget(self.formatting_toolbar)
         # Add the controls layout to the main vertical layout
         vbox.addLayout(controls)
         vbox.addLayout(hbox)
@@ -176,6 +247,40 @@ class MyApp(QWidget):
                 self.player.durationChanged.connect(self.duration_changed)
             except Exception as e:
                 print(f"An error occurred: {e}")
+
+    def select_mp4_file(self):
+        fname = QFileDialog.getOpenFileName(self, 'Open file', '/home')
+        if fname[0]:
+            try:
+                video = VideoFileClip(fname[0])
+                audio = video.audio
+                audio.write_audiofile("extracted_audio.wav")
+                self.audio_file_name = os.path.splitext(os.path.basename(fname[0]))[0]
+                if audio.duration > 4 * 60 * 1000:  # audio duration is more than 4 minutes
+                    QMessageBox.warning(self, 'Warning', 'You cannot transcribe more than 4 minutes.')
+                    return
+
+                # Show a progress dialog while the audio file is being transcribed
+                progress = QProgressDialog("Transcribing audio file...", None, 0, 0, self)
+                progress.setGeometry(350, 350, 300, 30)
+                progress.setWindowTitle(' ')
+                progress.show()
+                QApplication.processEvents()
+
+                text = self.transcribe_audio("extracted_audio.wav", progress)
+
+                progress.close()
+
+                self.text_edit.setText(text)
+
+                # Set the media content
+                self.player.setMedia(QMediaContent(QUrl.fromLocalFile("extracted_audio.wav")))
+
+                # Connect the media player signals
+                self.player.positionChanged.connect(self.position_changed)
+                self.player.durationChanged.connect(self.duration_changed)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error', f"An error occurred: {e}")
 
     # def save_to_text_file(self):
     #     if self.text_edit.toPlainText():
@@ -226,7 +331,8 @@ class MyApp(QWidget):
     def show_info(self):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
-        msg.setText("Audio Transcriber v1.4.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
+        msg.setText(
+            "Audio Transcriber v1.5.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
         msg.setWindowTitle("Info")
         msg.exec_()
 
@@ -241,7 +347,12 @@ class MyApp(QWidget):
                 # Update the progress value
                 progress.setValue(20)
                 QApplication.processEvents()
-                text = r.recognize_google(audio_data)
+
+                # Specify the language based on the selected radio button
+                language = 'en-US' if self.english_button.isChecked() else 'it-IT'
+                text = r.recognize_google(audio_data, language=language)
+                # text = r.recognize_google(audio_data)
+
                 # Update the progress value
                 progress.setValue(100)
                 QApplication.processEvents()
@@ -274,11 +385,11 @@ class MyApp(QWidget):
         self.label_duration.setText(time.strftime('%H:%M:%S', time.gmtime(duration / 1000)))
 
     # def mute_audio(self):
-        #     if self.player.isMuted():
-        #   self.player.setMuted(False)
-        #   self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolume))
-        # else:
-        #    self.player.setMuted(True)
+    #     if self.player.isMuted():
+    #   self.player.setMuted(False)
+    #   self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolume))
+    # else:
+    #    self.player.setMuted(True)
     #    self.mute_btn.setIcon(self.style().standardIcon(QStyle.SP_MediaVolumeMuted))
 
     def show_volume_dialog(self):
@@ -300,6 +411,37 @@ class MyApp(QWidget):
         else:
             # Show a message box if the search text is not found
             QMessageBox.information(self, 'Search', 'No matches found for your search.')
+
+    def set_bold(self):
+        format_text = QTextCharFormat()
+        format_text.setFontWeight(QFont.Bold if self.bold_action.isChecked() else QFont.Normal)
+        self.merge_format(format_text)
+
+    def set_italic(self):
+        format_text = QTextCharFormat()
+        format_text.setFontItalic(self.italic_action.isChecked())
+        self.merge_format(format_text)
+
+    def set_underline(self):
+        format_text = QTextCharFormat()
+        format_text.setFontUnderline(self.underline_action.isChecked())
+        self.merge_format(format_text)
+
+    def set_font_size(self, size):
+        format_text = QTextCharFormat()
+        format_text.setFontPointSize(float(size))
+        self.merge_format(format_text)
+
+    def set_font(self, font):
+        format_text = QTextCharFormat()
+        format_text.setFont(font)
+        self.merge_format(format_text)
+
+    def merge_format(self, format_text):
+        cursor = self.text_edit.textCursor()
+        cursor.mergeCharFormat(format_text)
+        self.text_edit.mergeCurrentCharFormat(format_text)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
