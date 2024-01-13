@@ -16,6 +16,7 @@ Audio Transcriber is a user-friendly desktop application that transcribes audio 
 - **New in version 1.4.0**: Search bar for transcribed text. Users can now quickly find and highlight specific keywords or phrases in the transcribed text.
 - **New in version 1.5.0**: Customized the transcription formatting for improved readability.
 - **New in version 1.5.0**: Added a new feature to transcribe audio from selected MP4 files.
+- **New in version 1.6.0.0**: Added Text-to-Speech feature. Users can now convert text to speech in multiple languages.
 
 ## How to Use
 
@@ -28,6 +29,7 @@ Audio Transcriber is a user-friendly desktop application that transcribes audio 
 7. **New in version 1.4.0**: Adjust the playback volume or mute/unmute the audio using the volume control dialog.
 8. **New in version 1.4.0**: Use the search bar to quickly find and highlight specific keywords or phrases in the transcribed text.
 9. **New in version 1.5.0.0**: Select an MP4 file to extract the audio and transcribe it to text.
+10. **New in version 1.6.0.0**: Insert text and select a language. Click 'Generate Speech' to convert the text to speech. Click 'Export Speech' to save the speech to an MP3 file.
 
 ## Built With
 
@@ -38,4 +40,4 @@ Audio Transcriber is a user-friendly desktop application that transcribes audio 
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the Apache License.

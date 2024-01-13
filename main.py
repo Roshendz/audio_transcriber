@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 import time
 
@@ -12,6 +13,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QVBoxLayout, QHB
 from PyQt5.QtCore import QUrl, QTime
 from pydub import AudioSegment
 from reportlab.pdfgen import canvas
+from gtts import gTTS
 import qdarkstyle
 from moviepy.editor import VideoFileClip
 
@@ -25,6 +27,7 @@ AudioSegment.ffprobe = "C:\\FFmpeg\\bin\\ffprobe.exe"
 class MyApp(QWidget):
     def __init__(self):
         super().__init__()
+        self.language = None
         self.btn_mp4 = None
         self.font_box = None
         self.font_size_box = None
@@ -70,6 +73,15 @@ class MyApp(QWidget):
         self.btn_mp4.setIcon(self.style().standardIcon(QStyle.SP_DialogOpenButton))
         self.btn_mp4.clicked.connect(self.select_mp4_file)
 
+        self.speech_btn = QPushButton('Generate Speech')
+        self.speech_btn.setIcon(self.style().standardIcon(QStyle.SP_DriveCDIcon))
+        self.speech_btn.setToolTip('Generate speech from the inserted text')
+        self.speech_btn.clicked.connect(self.generate_speech)
+        self.export_btn = QPushButton('Export Speech')
+        self.export_btn.setToolTip('Export the generated speech')
+        self.export_btn.setIcon(self.style().standardIcon(QStyle.SP_DialogSaveButton))
+        self.export_btn.clicked.connect(self.export_speech)
+
         # Style the buttons
         button_style = """
                     QPushButton {
@@ -97,6 +109,8 @@ class MyApp(QWidget):
         self.save_btn.setStyleSheet(button_style)
         self.info_btn.setStyleSheet(button_style)
         self.btn_mp4.setStyleSheet(button_style)
+        self.speech_btn.setStyleSheet(button_style)
+        self.export_btn.setStyleSheet(button_style)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.btn)
@@ -122,8 +136,10 @@ class MyApp(QWidget):
 
         # Create play and pause buttons
         self.play_btn = QPushButton('Play')
+        self.play_btn.setToolTip('Play the audio')
         self.play_btn.clicked.connect(self.play_audio)
         self.pause_btn = QPushButton('Pause')
+        self.pause_btn.setToolTip('Pause the audio')
         self.pause_btn.clicked.connect(self.pause_audio)
 
         # Style the play and pause buttons
@@ -140,6 +156,7 @@ class MyApp(QWidget):
         # Create a QLineEdit for the search bar
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText('Search...')
+        self.search_bar.setToolTip('Search the transcription')
         self.search_bar.textChanged.connect(self.highlight_text)
 
         # Create radio buttons for language selection
@@ -151,8 +168,8 @@ class MyApp(QWidget):
 
         # Add the radio buttons to a button group
         self.language_group = QButtonGroup()
-        self.language_group.addButton(self.english_button)
-        self.language_group.addButton(self.italian_button)
+        self.language_group.addButton(self.english_button, 0)
+        self.language_group.addButton(self.italian_button, 1)
 
         # Create a horizontal layout for the search bar and radio buttons
         search_and_language_layout = QHBoxLayout()
@@ -200,6 +217,10 @@ class MyApp(QWidget):
         controls.addWidget(self.label_duration)
         # controls.addWidget(self.label_remaining)
 
+        h_tts_box = QHBoxLayout()
+        h_tts_box.addWidget(self.speech_btn)
+        h_tts_box.addWidget(self.export_btn)
+
         vbox = QVBoxLayout()
         # Add the search bar to your layout
         vbox.addLayout(search_and_language_layout)
@@ -208,6 +229,7 @@ class MyApp(QWidget):
         vbox.addWidget(self.formatting_toolbar)
         # Add the controls layout to the main vertical layout
         vbox.addLayout(controls)
+        vbox.addLayout(h_tts_box)
         vbox.addLayout(hbox)
 
         self.setLayout(vbox)
@@ -332,7 +354,7 @@ class MyApp(QWidget):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
         msg.setText(
-            "Audio Transcriber v1.5.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
+            "Audio Transcriber v1.6.0.0\n\nThis application transcribes audio files to text. Please note that it can only transcribe audio files that are 4 minutes or shorter.")
         msg.setWindowTitle("Info")
         msg.exec_()
 
@@ -441,6 +463,63 @@ class MyApp(QWidget):
         cursor = self.text_edit.textCursor()
         cursor.mergeCharFormat(format_text)
         self.text_edit.mergeCurrentCharFormat(format_text)
+
+    # def set_language(self, index):
+    #     # Set the language based on the selected index
+    #     self.language = self.languages[self.language_box.itemText(index)]
+
+    def generate_speech(self):
+        try:
+            # Get the text from the text edit
+            text = self.text_edit.toPlainText()
+
+            # Show a progress dialog while the speech is being generated
+            progress = QProgressDialog("Generating speech...", None, 0, 0, self)
+            progress.setGeometry(350, 350, 300, 30)
+            progress.setWindowTitle(' ')
+            progress.show()
+            QApplication.processEvents()
+
+            # Get the selected language
+            selected_id = self.language_group.checkedId()
+            if selected_id == 0:
+                self.language = 'en'
+            elif selected_id == 1:
+                self.language = 'it'
+
+            # Convert the text to speech
+            speech = gTTS(text=text, lang=self.language, slow=False)
+
+            # Save the speech audio to a file
+            speech.save("speech.mp3")
+
+            progress.close()
+
+            # Set the media content to the generated speech audio
+            self.player.setMedia(QMediaContent(QUrl.fromLocalFile("speech.mp3")))
+
+            # Connect the media player signals
+            self.player.positionChanged.connect(self.position_changed)
+            self.player.durationChanged.connect(self.duration_changed)
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', f"An error occurred: {e}")
+
+    def export_speech(self):
+        # Open a file dialog for the user to choose the export location
+        fname = QFileDialog.getSaveFileName(self, 'Save File', '/home', 'MP3 Files (*.mp3)')
+
+        if fname[0]:
+            # Show a progress dialog while the speech is being exported
+            progress = QProgressDialog("Exporting speech...", None, 0, 0, self)
+            progress.setGeometry(350, 350, 300, 30)
+            progress.setWindowTitle(' ')
+            progress.show()
+            QApplication.processEvents()
+
+            # Copy the generated speech file to the chosen location
+            shutil.copyfile('speech.mp3', fname[0])
+
+            progress.close()
 
 
 if __name__ == '__main__':
